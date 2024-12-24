@@ -8,8 +8,6 @@ RUN npm install -g pnpm
 
 RUN pnpm install
 
-RUN pnpm prisma generate
-
 COPY . .
 
 EXPOSE 3002
