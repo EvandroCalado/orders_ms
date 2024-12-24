@@ -1,4 +1,4 @@
-import { HttpStatus, Inject, Injectable } from '@nestjs/common';
+import { HttpStatus, Inject, Injectable, Logger } from '@nestjs/common';
 import { ClientProxy, RpcException } from '@nestjs/microservices';
 import { firstValueFrom } from 'rxjs';
 import { NATS_SERVICE } from 'src/configs/services.constant';
@@ -7,10 +7,13 @@ import { ChangeStatusOrderDto } from './dto/change-status-order.dto';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { ErrorOrderDto } from './dto/error-order.dto';
 import { PaginationOrderDto } from './dto/pagination-order.dto';
+import { PaidOrderDto } from './dto/paid-order.dto';
 import { OrderWithProducts } from './interfaces/order-with-products.interface';
 
 @Injectable()
 export class OrdersService {
+  private readonly logger = new Logger('OrderService');
+
   constructor(
     private readonly prismaService: PrismaService,
     @Inject(NATS_SERVICE)
@@ -178,5 +181,27 @@ export class OrdersService {
     );
 
     return paymentSession;
+  }
+
+  async paidOrder(paidOrderDto: PaidOrderDto) {
+    this.logger.log('Paid order');
+    this.logger.log(paidOrderDto);
+
+    const updatedOrder = await this.prismaService.order.update({
+      where: { id: paidOrderDto.orderId },
+      data: {
+        status: 'PAID',
+        paid: true,
+        paidAt: new Date(),
+        stripeChangeId: paidOrderDto.stripePaymentId,
+        OrderReceipt: {
+          create: {
+            receiptUrl: paidOrderDto.receiptUrl,
+          },
+        },
+      },
+    });
+
+    return updatedOrder;
   }
 }
